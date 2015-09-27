@@ -1185,7 +1185,7 @@ void Fea::set_tCase()
 {
     QString logFile = output;
     int pos = logFile.lastIndexOf('.');
-    logFile.replace(pos,6,".log");
+    logFile.replace(pos,7,".log");
     qDebug() << "log file name " << logFile << endl;
     if(freopen(logFile.toStdString().c_str(),"r",stdin))
         scanf("%d",&t_case);
