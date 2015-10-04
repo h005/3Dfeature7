@@ -26,14 +26,21 @@ public:
 
     Render(MyMesh &in_mesh, glm::mat4 &model, glm::mat4 &view, glm::mat4 &projection, QWidget *parent = 0);
 
-    void setParameters(ExternalImporter<MyMesh> *exImporter);
+    void setMVP(glm::mat4 &model,glm::mat4 &view,glm::mat4 &proj);
+
+    void setParameters();
+
+    void setMeshSaliencyPara(ExternalImporter<MyMesh> *exImporter);
 
     void clear();
 
     void initial();
-    void rendering();
+
+    bool rendering();
 
     void showImage();
+    // fileName is absolute name
+    void storeImage(QString path,QString fileName);
 
     ~Render();
 

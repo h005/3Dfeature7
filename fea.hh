@@ -22,7 +22,7 @@ private:
 
     QString path;
     QString output;
-    QString modelPath;
+    QString matrixPath;
 
     QStringList fileName;
     QStringList pFileName;
@@ -37,31 +37,22 @@ private:
     cv::Mat image;
     CvSeq *contour;
 //    这个东西销毁有问题，现将其写为局部变量
-//    MyMesh mesh;
+    MyMesh mesh;
 
-    double *projectArea;
-    double *visSurfaceArea;
-    double *viewpointEntropy;
-    double *silhouetteLength;
-    double *silhouetteCurvature;
-    double *silhouetteCurvatureExtrema;
-    double *maxDepth;
-    double *depthDistribute;
-    double *meanCurvature;
-    double *gaussianCurvature;
-    double *meshSaliency;
-    double *abovePreference;
+    ExternalImporter<MyMesh> *exImporter;
+
+    Render *render;
 
     double *feaArray;
 
 public:
+    void showImage();
 
-    Fea(QString path);
-    Fea(QString matrixFile, QString path);
+    Fea(QString modelFile, QString path);
 
     void setFeature();
 
-    void setModelPath(QString modelPath);
+    void setMatrixPara(QString matrixPath);
     ~Fea();
 
 private:
@@ -140,6 +131,7 @@ private:
     void printOut();
 
     void set_tCase();
+
 };
 
 #endif // FEA_H

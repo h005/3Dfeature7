@@ -78,6 +78,18 @@ Render::Render(MyMesh &in_mesh,
     p_img = NULL;
 }
 
+void Render::setMVP(glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj)
+{
+    m_model = model;
+    m_view = view;
+    m_proj = proj;
+}
+
+void Render::setMeshSaliencyPara(ExternalImporter<MyMesh> *exImporter)
+{
+    exImporter->setMeshVector(p_vecMesh,p_indiceArray);
+}
+
 Render::~Render()
 {
     if(p_img)
@@ -124,7 +136,7 @@ void Render::paintGL()
     glBindFramebuffer(GL_FRAMEBUFFER,frameBufferId);
     glViewport(0,0,800,600);
     GLenum DrawBuffers[2] = {GL_COLOR_ATTACHMENT0,GL_DEPTH_ATTACHMENT};
-    glDrawBuffers(1, DrawBuffers);
+    glDrawBuffers(2, DrawBuffers);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
@@ -147,8 +159,8 @@ void Render::initial()
     glewExperimental = GL_TRUE;
     GLenum err = glewInit();
     std::cout<<"initial........."<<std::endl;
-    if(err == GLEW_OK)
-        std::cout<<"....err...GLEW_OK"<<endl;
+//    if(err == GLEW_OK)
+//        std::cout<<"....err...GLEW_OK"<<endl;
     assert(err == GLEW_OK);
 
     connect(context(),&QOpenGLContext::aboutToBeDestroyed,this,&Render::cleanup);
@@ -160,11 +172,13 @@ void Render::initial()
     frameBufferId = m_helper.fbo_init(vertexPosition_modelspaceID);
 }
 
-void Render::rendering()
+bool Render::rendering()
 {
+    initial();
     glBindFramebuffer(GL_FRAMEBUFFER,frameBufferId);
+    glViewport(0,0,800,600);
     GLenum DrawBuffers[2] = {GL_COLOR_ATTACHMENT0,GL_DEPTH_ATTACHMENT};
-    glDrawBuffers(1, DrawBuffers);
+    glDrawBuffers(2, DrawBuffers);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
@@ -178,6 +192,7 @@ void Render::rendering()
     glUniformMatrix4fv(mvMatrixID, 1, GL_FALSE, glm::value_ptr(modelViewMatrix));
 
     m_helper.draw();
+    return true;
 }
 
 void Render::showImage()
@@ -225,14 +240,77 @@ void Render::showImage()
     doneCurrent();
 
 }
+// fileName is absolute name
+// fileName  = path + name
+void Render::storeImage(QString path,QString fileName)
+{
+    makeCurrent();
 
-void Render::setParameters(ExternalImporter<MyMesh> *exImporter)
+    glBindFramebuffer(GL_FRAMEBUFFER,frameBufferId);
+    GLint viewport[4];
+    glGetIntegerv(GL_VIEWPORT,viewport);
+
+    GLfloat *img0 = new GLfloat[(viewport[2]-viewport[0])*(viewport[3]-viewport[1])];
+    glReadBuffer(GL_BACK_LEFT);
+    glReadPixels(0,0,viewport[2],viewport[3],GL_DEPTH_COMPONENT,GL_FLOAT,img0);
+
+    cv::Mat depthImgFliped = cv::Mat(viewport[3],viewport[2],CV_32FC1,img0);
+    cv::Mat depthImg;
+    cv::flip(depthImgFliped,depthImg,0);
+    depthImg.convertTo(depthImg,CV_8UC1,255,0);
+
+    GLubyte *img =
+            new GLubyte[(viewport[2] - viewport[0])
+            *(viewport[3] - viewport[1])*4];
+    glReadBuffer(GL_BACK_LEFT);
+    glReadPixels(0,
+            0,
+            viewport[2],
+            viewport[3],
+            GL_RGBA,
+            GL_UNSIGNED_BYTE,
+            img);
+    cv::Mat rgbaImgFliped = cv::Mat(viewport[3],viewport[2],CV_8UC4,img);
+    cv::Mat rgbImg;
+    cv::flip(rgbaImgFliped,rgbImg,0);
+    cv::cvtColor(rgbImg,rgbImg,CV_RGBA2BGR);
+    rgbImg.convertTo(rgbImg,CV_8UC3);
+
+    // fileName  = path + name
+    int len = path.length();
+    QString outputDepthFile = fileName;
+    QString outputDepth = path;
+    outputDepthFile.remove(0,len);
+    outputDepth.append("depth/");
+    outputDepth.append(outputDepthFile);
+    std::cout<< outputDepth.toStdString() << std::endl;
+    std::cout<<depthImg.type()<<std::endl;
+    // imwrite has a bug maybe need recompile
+    // ref http://stackoverflow.com/questions/6923296/opencv-imwrite-2-2-causes-exception-with-message-opencv-error-unspecified-erro
+    //  cv::imwrite(outputDepth.toStdString(),depthImg);
+    cvSaveImage(outputDepth.toStdString().c_str(),&(IplImage(depthImg)));
+
+    QString outputRgbFile = fileName;
+    QString outputRgb = path;
+    outputRgbFile.remove(0,len);
+    outputRgb.append("rgb/");
+    outputRgb.append(outputRgbFile);
+    std::cout<< outputRgb.toStdString() << std::endl;
+    //  cv::imwrite(outputRgb.toStdString(),rgbImg);
+    cvSaveImage(outputRgb.toStdString().c_str(),&(IplImage(rgbImg)));
+}
+
+void Render::setParameters()
 {
     std::vector<GLuint> indices;
-    p_vertices.clear();
-    p_isVertexVisible.clear();
-    p_VisibleFaces.clear();
-    p_verticesMvp.clear();
+//    p_vertices.clear();
+//    p_isVertexVisible.clear();
+//    p_VisibleFaces.clear();
+//    p_verticesMvp.clear();
+    std::vector<GLfloat>().swap(p_vertices);
+    std::vector<bool>().swap(p_isVertexVisible);
+    std::vector<GLuint>().swap(p_VisibleFaces);
+    std::vector<GLfloat>().swap(p_verticesMvp);
 
     if(p_img)
     {
@@ -313,7 +391,7 @@ void Render::setParameters(ExternalImporter<MyMesh> *exImporter)
     glBindFramebuffer(GL_FRAMEBUFFER,0);
 
     doneCurrent();
-    exImporter->setMeshVector(p_vecMesh,p_indiceArray);
+
 }
 
 void Render::clear()

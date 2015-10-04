@@ -5,68 +5,10 @@
 
 #define NoProjection
 
-Fea::Fea(QString path)
-{
-    std::cout<<"....fea...."<<std::endl;
-
-    QDir *dir = new QDir(path);
-
-    this->path = path;
-
-    QStringList filters;
-//    filters << "*.off";
-//    filters << "*.obj";
-    filters << "*.dae";
-
-    dir->setNameFilters(filters);
-
-    fileName = dir->entryList();
-    NUM = fileName.count();
-
-    for(int i=0;i<NUM;i++)
-        std::cout<<fileName.at(i).toStdString()<<std::endl;
-
-    QStringList pfilters;
-    pfilters << "*.mvp";
-
-    dir->setNameFilters(pfilters);
-
-    pFileName = dir->entryList();
-    P_NUM = pFileName.count();
-
-//    for(int i=0;i<P_NUM;i++)
-//        std::cout<<pFileName[i].toStdString()<<std::endl;
-
-    projectArea = new double[NUM];
-
-    visSurfaceArea = new double[NUM];
-
-    viewpointEntropy = new double[NUM];
-
-    silhouetteLength = new double[NUM];
-
-    silhouetteCurvature = new double[NUM];
-
-    silhouetteCurvatureExtrema = new double[NUM];
-
-    maxDepth = new double[NUM];
-
-    depthDistribute = new double[NUM];
-
-    meanCurvature = new double[NUM];
-
-    gaussianCurvature = new double[NUM];
-
-    meshSaliency = new double[NUM];
-
-    abovePreference = new double[NUM];
-
-}
-
-Fea::Fea(QString matrixFile, QString path)
+Fea::Fea(QString modelFile, QString path)
 {
     this->path = path;
-
+/*
     // set the output path
     output = matrixFile;
 
@@ -83,177 +25,110 @@ Fea::Fea(QString matrixFile, QString path)
 
     for(int i = 0; i<NUM ; i++)
         std::cout<<fileName.at(i).toStdString()<<std::endl;
-
+*/
     // the number of feature is 12
     feaArray = new double[12];
 
     memset(feaArray,0,sizeof(double)*12);
 
-    qDebug()<<"t_case" << t_case << endl;
-
-}
-/*
-void Fea::setFeature()
-{
-    for(int p_tcase = 0; p_tcase < P_NUM; p_tcase++)
-    {
-        initial();
-
-        // the path of parameter
-        QString tmpPpath = path;
-        tmpPpath.append('/').append(pFileName.at(p_tcase));
-
-
-        for( t_case =0 ; t_case < NUM ; t_case++)
-//            for( t_case =0 ; t_case < 1 ; t_case++)
-            {
-                MyMesh mesh;
-                // read in
-                QString tmpPath = path;
-                tmpPath.append('/').append(fileName.at(t_case));
-                ExternalImporter<MyMesh> *exImporter = new ExternalImporter<MyMesh>();
-//                if(!ExternalImporter<MyMesh>::read_mesh(mesh,tmpPath.toStdString().c_str()))
-                if(!exImporter->read_mesh(mesh,tmpPath.toStdString().c_str()))
-                {
-                    std::cerr << "Error: Cannot read mesh from " << std::endl;
-                    return;
-                }
-                // render
-                Render *render = new Render(mesh,tmpPpath);
-                //必须调用该函数
-                render->show();
-
-                render->setParameters(exImporter);
-                //显示图像看效果，可以不用
-//                render->showImage();
-
-                setMat(render->p_img, render->p_width, render->p_height);
-
-                setProjectArea();
-
-//                setVisSurfaceArea(render->p_vertices,render->p_VisibleFaces);
-
-//                setViewpointEntropy(render->p_verticesMvp,render->p_VisibleFaces);
-
-//                setSilhouetteLength();
-
-//                setSilhouetteCE();
-
-//                setMaxDepth(render->p_img,render->p_height*render->p_width);
-
-//                setDepthDistribute(render->p_img,render->p_width*render->p_height);
-
-//                setMeanCurvature(mesh,render->p_isVertexVisible);
-
-//                setGaussianCurvature(mesh,render->p_isVertexVisible);
-
-//                setMeshSaliency(mesh, render->p_vertices, render->p_isVertexVisible);
-
-                setMeanCurvature(t_case,render->p_isVertexVisible,render->p_vecMesh,render->p_indiceArray);
-
-                setGaussianCurvature(t_case,render->p_isVertexVisible,render->p_vecMesh,render->p_indiceArray);
-
-                setMeshSaliency(t_case, render->p_vertices, render->p_isVertexVisible, render->p_vecMesh,render->p_indiceArray);
-
-//                setAbovePreference(tmpPath, render->p_model);
-
-                delete render;
-
-            }
-//        print(tmpPpath);
-    }
-
-
-}
-*/
-
-void Fea::setFeature()
-{
-    MyMesh mesh;
+//    qDebug()<<"t_case" << t_case << endl;
 
     // read in
-    ExternalImporter<MyMesh> *exImporter = new ExternalImporter<MyMesh>();
+    exImporter = new ExternalImporter<MyMesh>();
 
-    if(!exImporter->read_mesh(mesh,modelPath.toStdString().c_str()))
+    if(!exImporter->read_mesh(mesh,modelFile.toStdString().c_str()))
     {
         std::cerr << "Error: Cannot read mesh from "<<std::endl;
         return ;
     }
 
+    glm::mat4 tmpPara;
+    render = new Render(mesh,tmpPara,tmpPara,tmpPara);
+
+    render->show();
+}
+
+void Fea::setFeature()
+{
+
+    render->setMeshSaliencyPara(exImporter);
     for(; t_case < NUM ; t_case++)
     {
         // render
-        Render *render = new Render(mesh,model[t_case],view[t_case],projection[t_case]);
+        render->setMVP(model[t_case],view[t_case],projection[t_case]);
 
-        render->show();
+        bool res = render->rendering();
 
-        render->setParameters(exImporter);
+        if(res)
+        {
+            render->setParameters();
 
-        //used for check the image
-//        render->showImage();
+            //used for check the image
+//            render->showImage();
 
-        setMat(render->p_img,render->p_width,render->p_height);
+            render->storeImage(path,fileName[t_case]);
 
-        setProjectArea();
+            setMat(render->p_img,render->p_width,render->p_height);
 
-        setVisSurfaceArea(render->p_vertices,render->p_VisibleFaces);
+            setProjectArea();
 
-        setViewpointEntropy(render->p_verticesMvp,render->p_VisibleFaces);
+            setVisSurfaceArea(render->p_vertices,render->p_VisibleFaces);
 
-        setSilhouetteLength();
+            setViewpointEntropy(render->p_verticesMvp,render->p_VisibleFaces);
 
-        setSilhouetteCE();
+            setSilhouetteLength();
 
-        setMaxDepth(render->p_img,render->p_height*render->p_width);
+            setSilhouetteCE();
 
-        setDepthDistribute(render->p_img,render->p_height*render->p_width);
+            setMaxDepth(render->p_img,render->p_height*render->p_width);
 
-        setMeanCurvature(t_case,render->p_isVertexVisible,render->p_vecMesh,render->p_indiceArray);
+            setDepthDistribute(render->p_img,render->p_height*render->p_width);
 
-        setGaussianCurvature(t_case,render->p_isVertexVisible,render->p_vecMesh,render->p_indiceArray);
+            setMeanCurvature(t_case,render->p_isVertexVisible,render->p_vecMesh,render->p_indiceArray);
 
-        setMeshSaliency(t_case,render->p_vertices,render->p_isVertexVisible,render->p_vecMesh,render->p_indiceArray);
+            setGaussianCurvature(t_case,render->p_isVertexVisible,render->p_vecMesh,render->p_indiceArray);
 
-        setAbovePreference(output,render->p_model);
+//            setMeshSaliency(t_case,render->p_vertices,render->p_isVertexVisible,render->p_vecMesh,render->p_indiceArray);
 
-        delete render;
+            setAbovePreference(output,render->p_model);
+        }
+
+//        break;
 
         printOut();
+
     }
 
 }
 
-void Fea::setModelPath(QString modelPath)
+void Fea::setMatrixPara(QString matrixPath)
 {
-    this->modelPath = modelPath;
+    this->matrixPath = matrixPath;
+
+    output = matrixPath;
+
+    int pos = output.lastIndexOf('.');
+    output.replace(pos,7,".3df");
+
+    std::cout<< "output " << output.toStdString() << std::endl;
+
+    set_tCase();
+
+    setFilenameList_mvpMatrix(matrixPath);
+
+    NUM = fileName.count();
+
+    for(int i = 0; i<NUM ; i++)
+        std::cout<<fileName.at(i).toStdString()<<std::endl;
+
+    std::cout<<t_case<<std::endl;
+
 }
 
 
 Fea::~Fea()
 {
-    delete projectArea;
 
-    delete visSurfaceArea;
-
-    delete viewpointEntropy;
-
-    delete silhouetteLength;
-
-    delete silhouetteCurvature;
-
-    delete silhouetteCurvatureExtrema;
-
-    delete maxDepth;
-
-    delete depthDistribute;
-
-    delete meanCurvature;
-
-    delete gaussianCurvature;
-
-    delete meshSaliency;
-
-    delete abovePreference;
 }
 
 void Fea::setMat(float *img, int width, int height)
@@ -334,32 +209,37 @@ void Fea::setViewpointEntropy(std::vector<GLfloat> &vertex, std::vector<GLuint> 
     double max = -1.0;
     feaArray[2] = 0.0;
 //    setArea
-    for(int i=0;i<face.size();i+=3)
+//    qDebug()<<"face size"<<face.size()<<endl;
+    if(face.size())
     {
-        CvPoint2D64f a = cvPoint2D64f(vertex[face[i]*3],vertex[face[i]*3+1]);
-        CvPoint2D64f b = cvPoint2D64f(vertex[face[i+1]*3],vertex[face[i+1]*3+1]);
-        CvPoint2D64f c = cvPoint2D64f(vertex[face[i+2]*3],vertex[face[i+2]*3+1]);
-//        double bc = getDis2D(&b,&c);
-//        double ac = getDis2D(&a,&c);
-//        double cosACB = cosVal2D(&a,&b,&c);
-//        double sinACB = sqrt(1.0 - cosACB*cosACB);
-//        area[i/3] = bc*ac*sinACB/2.0;
-        area[i/3] = getArea2D(&a,&b,&c);
-        min = min > area[i/3] ? area[i/3] : min;
-        max = max > area[i/3] ? max : area[i/3];
-    }
-//    setHist
-    double step = (max-min)/(double)(NumHistViewEntropy);
-    for(int i=0;i<face.size()/3;i++)
-    {
-//        qDebug()<<(int)((area[i] - min)/step)<<endl;
-        if(area[i] == max)
-            hist[NumHistViewEntropy - 1]++;
-        else
-            hist[(int)((area[i] - min)/step)] ++;
+        for(int i=0;i<face.size();i+=3)
+        {
+            CvPoint2D64f a = cvPoint2D64f(vertex[face[i]*3],vertex[face[i]*3+1]);
+            CvPoint2D64f b = cvPoint2D64f(vertex[face[i+1]*3],vertex[face[i+1]*3+1]);
+            CvPoint2D64f c = cvPoint2D64f(vertex[face[i+2]*3],vertex[face[i+2]*3+1]);
+    //        double bc = getDis2D(&b,&c);
+    //        double ac = getDis2D(&a,&c);
+    //        double cosACB = cosVal2D(&a,&b,&c);
+    //        double sinACB = sqrt(1.0 - cosACB*cosACB);
+    //        area[i/3] = bc*ac*sinACB/2.0;
+            area[i/3] = getArea2D(&a,&b,&c);
+//            qDebug()<< "area... "<<i<<" "<<area[i/3]<<endl;
+            min = min > area[i/3] ? area[i/3] : min;
+            max = max > area[i/3] ? max : area[i/3];
+        }
+    //    setHist
+        double step = (max-min)/(double)(NumHistViewEntropy);
+        for(int i=0;i<face.size()/3;i++)
+        {
+    //        qDebug()<<(int)((area[i] - min)/step)<<endl;
+            if(area[i] == max)
+                hist[NumHistViewEntropy - 1]++;
+            else
+                hist[(int)((area[i] - min)/step)] ++;
+        }
+        normalizeHist(hist,step,NumHistViewEntropy);
     }
 
-    normalizeHist(hist,step,NumHistViewEntropy);
 
 //    setEntropy
     for(int i=0;i<NumHistViewEntropy;i++)
@@ -414,7 +294,10 @@ void Fea::setSilhouetteLength()
                 1);
 //    cvShowImage("image",img_tmp);
 //    ref http://blog.csdn.net/fdl19881/article/details/6730112
-    feaArray[3] = cvArcLength(contour);
+    if(contour)
+        feaArray[3] = cvArcLength(contour);
+    else
+        feaArray[3] = 0.0;
     std::cout<<"fea silhouetteLength "<<feaArray[3]<<std::endl;
 //    readCvSeqTest(contour);
 }
@@ -428,6 +311,7 @@ void Fea::setSilhouetteCE()
 //    ghabcdefghabcde
 //     ^  ->  ^
 //    gha -> hab -> abc
+    if(contour)
     for(int i=0;i<contour->total;i++)
     {
         CvPoint *a0 = CV_GET_SEQ_ELEM(CvPoint,contour,i-2);
@@ -478,20 +362,25 @@ void Fea::setDepthDistribute(GLfloat *zBuffer, int num)
         max = max < zBuffer[i] ? zBuffer[i] : max;
     }
     double step = (max - min)/(double)NumHistDepth;
-    // explain for if else below
-    // such as min = 0 and max = 15 then step = 1
-    // so the hist is [0,1),[1,2),[2,3)...[14,15)
-    // max was omit!
-    for(int i=0;i<num;i++)
-    {
-        if(zBuffer[i]==max)
-            hist[NumHistDepth - 1]++;
-        else
-            hist[(int)((zBuffer[i]-min)/step)]++;
-    }
-    // normalizeHist
-    normalizeHist(hist,step,NumHistDepth);
 
+    if(step)
+    {
+        // explain for if else below
+        // such as min = 0 and max = 15 then step = 1
+        // so the hist is [0,1),[1,2),[2,3)...[14,15)
+        // max was omit!
+        for(int i=0;i<num;i++)
+        {
+            if(zBuffer[i]==max)
+                hist[NumHistDepth - 1]++;
+            else
+                hist[(int)((zBuffer[i]-min)/step)]++;
+        }
+        // normalizeHist
+        normalizeHist(hist,step,NumHistDepth);
+    }
+
+    std::cout<<"step "<<step<<std::endl;
     for(int i=0; i<NumHistDepth; i++)
         feaArray[7] += hist[i]*hist[i]*step;
     feaArray[7] = 1 - feaArray[7];
@@ -1078,18 +967,6 @@ void Fea::normalizeHist(double *hist,double step,int num)
 
 void Fea::initial()
 {
-    memset(projectArea,0,sizeof(double)*NUM);
-    memset(visSurfaceArea,0,sizeof(double)*NUM);
-    memset(viewpointEntropy,0,sizeof(double)*NUM);
-    memset(silhouetteLength,0,sizeof(double)*NUM);
-    memset(silhouetteCurvature,0,sizeof(double)*NUM);
-    memset(silhouetteCurvatureExtrema,0,sizeof(double)*NUM);
-    memset(maxDepth,0,sizeof(double)*NUM);
-    memset(depthDistribute,0,sizeof(double)*NUM);
-    memset(meanCurvature,0,sizeof(double)*NUM);
-    memset(gaussianCurvature,0,sizeof(double)*NUM);
-    memset(meshSaliency,0,sizeof(double)*NUM);
-    memset(abovePreference,0,sizeof(double)*NUM);
 }
 
 void Fea::setFilenameList_mvpMatrix(QString matrixFile)
@@ -1133,7 +1010,7 @@ void Fea::setFilenameList_mvpMatrix(QString matrixFile)
 #endif
     }
 }
-
+/*
 void Fea::print(QString p_path)
 {
     p_path.append(QString(".3df"));
@@ -1158,6 +1035,7 @@ void Fea::print(QString p_path)
     fclose(stdout);
     freopen("CON","w",stdout);
 }
+*/
 
 void Fea::printOut()
 {
@@ -1191,6 +1069,11 @@ void Fea::set_tCase()
         scanf("%d",&t_case);
     else
         t_case = 0;
+}
+
+void Fea::showImage()
+{
+    render->showImage();
 }
 
 

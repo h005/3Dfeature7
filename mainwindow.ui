@@ -15,21 +15,31 @@
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QFormLayout" name="formLayout">
+    <property name="fieldGrowthPolicy">
+     <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+    </property>
     <item row="0" column="0">
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
        <layout class="QVBoxLayout" name="verticalLayout">
         <item>
-         <widget class="QPushButton" name="open">
+         <widget class="QPushButton" name="loadModel">
+          <property name="text">
+           <string>loadModel</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="bMatrixPath">
           <property name="text">
            <string>matirxPath</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="modelPath">
+         <widget class="QPushButton" name="showImage">
           <property name="text">
-           <string>modelPath</string>
+           <string>showImage</string>
           </property>
          </widget>
         </item>
@@ -43,11 +53,22 @@
        </layout>
       </item>
       <item>
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>path</string>
-        </property>
-       </widget>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <widget class="QLabel" name="modelPath">
+          <property name="text">
+           <string>path</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lmatrixPath">
+          <property name="text">
+           <string>matrix path</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </item>

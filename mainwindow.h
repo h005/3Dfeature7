@@ -18,11 +18,13 @@ public:
     ~MainWindow();
 
 private slots:
-    void on_open_clicked();
-
     void on_process_clicked();
 
-    void on_modelPath_clicked();
+    void on_loadModel_clicked();
+
+    void on_bMatrixPath_clicked();
+
+    void on_showImage_clicked();
 
 private:
     Ui::MainWindow *ui;
