@@ -36,7 +36,7 @@ private:
 
     cv::Mat image;
     CvSeq *contour;
-//    这个东西销毁有问题，现将其写为局部变量
+
     MyMesh mesh;
 
     ExternalImporter<MyMesh> *exImporter;

@@ -298,6 +298,14 @@ void Render::storeImage(QString path,QString fileName)
     std::cout<< outputRgb.toStdString() << std::endl;
     //  cv::imwrite(outputRgb.toStdString(),rgbImg);
     cvSaveImage(outputRgb.toStdString().c_str(),&(IplImage(rgbImg)));
+
+
+    delete []img0;
+    depthImgFliped.release();
+    depthImg.release();
+    delete []img;
+    rgbaImgFliped.release();
+    rgbImg.release();
 }
 
 void Render::setParameters()
@@ -396,11 +404,11 @@ void Render::setParameters()
 
 void Render::clear()
 {
-    p_vertices.clear();
-    p_isVertexVisible.clear();
-    p_VisibleFaces.clear();
-    p_verticesMvp.clear();
-    delete p_img;
+    std::vector<GLfloat>().swap(p_vertices);
+    std::vector<bool>().swap(p_isVertexVisible);
+    std::vector<GLuint>().swap(p_VisibleFaces);
+    std::vector<GLfloat>().swap(p_verticesMvp);
+    delete []p_img;
 }
 
 glm::mat4 Render::getModelViewMatrix()

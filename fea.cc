@@ -135,6 +135,8 @@ void Fea::setMat(float *img, int width, int height)
 {
     cv::Mat image0 = cv::Mat(width,height,CV_32FC1,img);
     image0.convertTo(image,CV_8UC1,255.0);
+    // release memory
+    image0.release();
 }
 
 void Fea::setProjectArea()
@@ -246,10 +248,12 @@ void Fea::setViewpointEntropy(std::vector<GLfloat> &vertex, std::vector<GLuint> 
         if(hist[i])
             feaArray[2] += hist[i]*log2(hist[i]);
 //    NND绝对的未解之谜！加了下面一句话会报错！
-//    delete hist;
+    delete []hist;
     feaArray[2] = - feaArray[2];
 
     std::cout<<"fea viewpointEntropy "<<feaArray[2]<<std::endl;
+//    delete []hist;
+    delete []area;
 /*
     freopen("e:/matlab/vpe.txt","w",stdout);
     for(int i=0;i<vertex.size();i+=3)
@@ -277,6 +281,7 @@ void Fea::setSilhouetteLength()
     img_tmp = cvCloneImage(tmpImage);
 
     CvMemStorage *mem_storage = cvCreateMemStorage(0);
+
     contour = NULL;
     cvFindContours(
                 img_tmp,
@@ -299,6 +304,9 @@ void Fea::setSilhouetteLength()
     else
         feaArray[3] = 0.0;
     std::cout<<"fea silhouetteLength "<<feaArray[3]<<std::endl;
+    cvReleaseImage(&tmpImage);
+    cvReleaseImage(&img_tmp);
+//    cvReleaseMemStorage(&mem_storage);
 //    readCvSeqTest(contour);
 }
 
@@ -386,7 +394,7 @@ void Fea::setDepthDistribute(GLfloat *zBuffer, int num)
     feaArray[7] = 1 - feaArray[7];
 
     std::cout<<"fea depthDistriubute "<<feaArray[7]<<std::endl;
-    delete hist;
+    delete []hist;
 //    hist = NULL;
 /*
     freopen("depth.txt","w",stdout);
@@ -974,7 +982,7 @@ void Fea::setFilenameList_mvpMatrix(QString matrixFile)
     freopen(matrixFile.toStdString().c_str(),"r",stdin);
     QString tmp;
     char tmpss[200];
-    double tmpNum;
+    float tmpNum;
     while(scanf("%s",tmpss)!=EOF)
     {
         QString tmpPath = path;
@@ -984,7 +992,7 @@ void Fea::setFilenameList_mvpMatrix(QString matrixFile)
         glm::mat4 m,v;
         for(int i=0;i<16;i++)
         {
-            scanf("%lf",&tmpNum);
+            scanf("%f",&tmpNum);
             m[i/4][i%4] = tmpNum;
         }
         this->model.push_back(m);
@@ -1057,6 +1065,7 @@ void Fea::printOut()
     printf("%d\n",t_case+1);
 
     freopen("CON","a+",stdout);
+    image.release();
 }
 
 void Fea::set_tCase()
