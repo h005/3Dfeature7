@@ -1,4 +1,4 @@
-#ifndef RENDER_H
+﻿#ifndef RENDER_H
 #define RENDER_H
 
 #include <GL/glew.h>
@@ -36,7 +36,13 @@ public:
 
     void initial();
 
-    bool rendering();
+    void resizeGL(int width,int height);
+
+    QSize sizeHint() const;
+
+    QSize minimumSizeHint() const;
+
+    bool rendering(int count);
 
     void showImage();
     // fileName is absolute name
@@ -88,6 +94,8 @@ private:
     QString fileName;
     bool m_transparent;
     GLuint frameBufferId;
+    GLuint depthRenderBuffer;
+    GLuint colorRenderBuffer;
 
 };
 

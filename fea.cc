@@ -1,4 +1,4 @@
-#include "fea.hh"
+﻿#include "fea.hh"
 #include "meancurvature.hh"
 #include "gausscurvature.hh"
 #include <QtDebug>
@@ -57,7 +57,7 @@ void Fea::setFeature()
         // render
         render->setMVP(model[t_case],view[t_case],projection[t_case]);
 
-        bool res = render->rendering();
+        bool res = render->rendering(t_case);
 
         if(res)
         {
@@ -88,13 +88,12 @@ void Fea::setFeature()
 
             setGaussianCurvature(t_case,render->p_isVertexVisible,render->p_vecMesh,render->p_indiceArray);
 
-//            setMeshSaliency(t_case,render->p_vertices,render->p_isVertexVisible,render->p_vecMesh,render->p_indiceArray);
+            setMeshSaliency(t_case,render->p_vertices,render->p_isVertexVisible,render->p_vecMesh,render->p_indiceArray);
 
             setAbovePreference(output,render->p_model);
         }
 
 //        break;
-
         printOut();
 
     }
@@ -314,7 +313,7 @@ void Fea::setSilhouetteCE()
 {
     feaArray[4] = 0.0;
     feaArray[5] = 0.0;
-    double curva;
+    double curva = 0;
 //    example
 //    ghabcdefghabcde
 //     ^  ->  ^
@@ -328,8 +327,12 @@ void Fea::setSilhouetteCE()
         CvPoint2D64f a = cvPoint2D64f((double)a0->x,(double)a0->y);
         CvPoint2D64f b = cvPoint2D64f((double)b0->x,(double)b0->y);
         CvPoint2D64f c = cvPoint2D64f((double)c0->x,(double)c0->y);
+//        std::cout<<a0->x<<" "<<a0->y<<std::endl;
+//        std::cout<<b0->x<<" "<<b0->y<<std::endl;
+//        std::cout<<c0->x<<" "<<c0->y<<std::endl;
         if(getCurvature(&a,&b,&c,curva))
         {
+//            std::cout << curva << std::endl;
             feaArray[4] += abs(curva);
             feaArray[5] += curva*curva;
         }
@@ -653,7 +656,7 @@ void Fea::setAbovePreference(QString filename, glm::mat4 &model)
                 scanf("%lf",&tmp);
                 model2[i][j] = tmp;
             }
-        model2 = glm::transpose(model2);
+//        model2 = glm::transpose(model2);
         glm::vec4 z = glm::vec4(0.0,0.0,1.0,1.0);
         glm::vec4 yyy = model*model2*z;
     //    the theta between yyy and (0,1,0,1)
@@ -661,9 +664,13 @@ void Fea::setAbovePreference(QString filename, glm::mat4 &model)
         glm::vec4 tmp0 = yyy*yyy;
         for(int i=0;i<4;i++)
             norm_yyy += tmp0[i];
+
         double cosTheta = (yyy.y + 1.0) / sqrt(norm_yyy) / sqrt(2.0);
+
         double theta = acos(cosTheta);
+
         setAbovePreference(theta);
+
         fclose(stdin);
     }
     else
@@ -862,6 +869,7 @@ bool Fea::getCurvature(CvPoint2D64f *a, CvPoint2D64f *b, CvPoint2D64f *c, double
     if(getR(a,b,c,r))
     {
         cur = 1.0/r;
+//        std::cout<<"curvature..."<<cur<<std::endl;
         return true;
     }
     else
@@ -943,8 +951,14 @@ double Fea::cosVal2D(CvPoint2D64f *a, CvPoint2D64f *b, CvPoint2D64f *c)
             +(a->y-c->y)*(a->y-c->y);
     double vb = (b->x-c->x)*(b->x-c->x)
             +(b->y-c->y)*(b->y-c->y);
+
     va = sqrt(va);
     vb = sqrt(vb);
+//    std::cout<<"...cosVal2D "<<dotVal<<" "<<va<<" "<<vb<<std::endl;
+    if(!va)
+        return 0;
+    if(!vb)
+        return 0;
     return dotVal/va/vb;
 }
 
@@ -957,7 +971,8 @@ bool Fea::getR(CvPoint2D64f *a, CvPoint2D64f *b, CvPoint2D64f *c, double &r)
 //        the third vertex is C the edge is c(AB)
     double c0 = getDis2D(a,b);
     double cosACB = cosVal2D(a,b,c);
-    double sinACB = sqrt(1-cosACB*cosACB);
+    double sinACB = sqrt(1.0 - cosACB*cosACB);
+//    std::cout<<c0<<" "<<sinACB<<std::endl;
     if(!sinACB)
         return false;
     r = c0/2.0/sinACB;
@@ -993,7 +1008,7 @@ void Fea::setFilenameList_mvpMatrix(QString matrixFile)
         for(int i=0;i<16;i++)
         {
             scanf("%f",&tmpNum);
-            m[i/4][i%4] = tmpNum;
+            m[i%4][i/4] = tmpNum;
         }
         this->model.push_back(m);
         this->view.push_back(v);

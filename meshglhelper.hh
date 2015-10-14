@@ -1,4 +1,4 @@
-#ifndef MESHGLHELPER
+﻿#ifndef MESHGLHELPER
 #define MESHGLHELPER
 
 #include <assert.h>
@@ -88,7 +88,7 @@ public:
 
     }
 
-    GLuint fbo_init(GLuint vertexPositionID)
+    void fbo_init(GLuint vertexPositionID)
     {
         int index = 0;
         std::map<typename MeshT::VertexHandle, int> dict;
@@ -143,30 +143,9 @@ public:
                      GL_STATIC_DRAW);
 
         numsToDraw = indices.size();
+        std::cout<<"init "<<indices.size()<<std::endl;
         m_isInited = true;
 
-        FramebufferName = 0;
-        glGenFramebuffers(1, &FramebufferName);
-        glBindFramebuffer(GL_FRAMEBUFFER, FramebufferName);
-
-        GLuint depthRenderBuffer;
-        GLuint colorRenderBuffer;
-        glGenRenderbuffers(1, &depthRenderBuffer);
-        glBindRenderbuffer(GL_RENDERBUFFER, depthRenderBuffer);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 800, 512);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthRenderBuffer);
-
-        glGenRenderbuffers(1, &colorRenderBuffer);
-        glBindRenderbuffer(GL_RENDERBUFFER, colorRenderBuffer);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA, 800,512);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, colorRenderBuffer);
-
-//        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, colorRenderBuffer,0);
-
-        glBindFramebuffer(GL_FRAMEBUFFER,0);
-        qDebug()<<"FramebufferName fbo...init"<<endl;
-
-        return FramebufferName;
     }
 
     void replace_init(std::vector<GLfloat> vertices, std::vector<GLuint> indices, GLuint vertexPositionID)

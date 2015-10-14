@@ -1,4 +1,4 @@
-#include "render.hh"
+﻿#include "render.hh"
 #include "meshglhelper.hh"
 #include <QMouseEvent>
 #include <QOpenGLShaderProgram>
@@ -57,6 +57,9 @@ Render::Render(MyMesh &in_mesh,
 
     fclose(stdin);
     p_img = NULL;
+    frameBufferId = 0;
+    depthRenderBuffer = 0;
+    colorRenderBuffer = 0;
 }
 
 Render::Render(MyMesh &in_mesh,
@@ -76,6 +79,9 @@ Render::Render(MyMesh &in_mesh,
         setAttribute(Qt::WA_TranslucentBackground);
 
     p_img = NULL;
+    frameBufferId = 0;
+    depthRenderBuffer = 0;
+    colorRenderBuffer = 0;
 }
 
 void Render::setMVP(glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj)
@@ -107,12 +113,19 @@ void Render::cleanup()
     {
         glDeleteProgram(m_programID);
     }
+    if(frameBufferId)
+        glDeleteRenderbuffers(1,&frameBufferId);
+    if(depthRenderBuffer)
+        glDeleteRenderbuffers(1,&depthRenderBuffer);
+    if(colorRenderBuffer)
+        glDeleteRenderbuffers(1,&colorRenderBuffer);
     m_helper.cleanup();
     doneCurrent();
 }
 
 void Render::initializeGL()
 {
+    std::cout<<"initialGL"<<std::endl;
     //read file
     //set m_camera
     glewExperimental = GL_TRUE;
@@ -123,60 +136,88 @@ void Render::initializeGL()
     initializeOpenGLFunctions();
     glClearColor(0,0,0,m_transparent?0:1);
 
-    m_programID = LoadShaders( "sphereShader.vert", "sphereShader.frag" );
-    GLuint vertexPosition_modelspaceID = glGetAttribLocation(m_programID, "vertexPosition_modelspace");
-    frameBufferId = m_helper.fbo_init(vertexPosition_modelspaceID);
 
-    std::cout<<"initialGL......."<<std::endl;
 
+//    initial();
+
+    std::cout<<"initial..."<<std::endl;
 }
+
+
 
 void Render::paintGL()
 {
-    glBindFramebuffer(GL_FRAMEBUFFER,frameBufferId);
-    glViewport(0,0,800,600);
-    GLenum DrawBuffers[2] = {GL_COLOR_ATTACHMENT0,GL_DEPTH_ATTACHMENT};
-    glDrawBuffers(2, DrawBuffers);
+//    glBindFramebuffer(GL_FRAMEBUFFER,frameBufferId);
 
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glEnable(GL_DEPTH_TEST);
+//    GLenum DrawBuffers[2] = {GL_COLOR_ATTACHMENT0,GL_DEPTH_ATTACHMENT};
+//    glDrawBuffers(2, DrawBuffers);
 
-    glm::mat4 modelViewMatrix = getModelViewMatrix();
+//    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+//    glEnable(GL_DEPTH_TEST);
 
-    glUseProgram(m_programID);
-    GLuint projMatrixID = glGetUniformLocation(m_programID, "projMatrix");
-    GLuint mvMatrixID = glGetUniformLocation(m_programID, "mvMatrix");
-    glUniformMatrix4fv(projMatrixID, 1, GL_FALSE, glm::value_ptr(m_proj));
-    glUniformMatrix4fv(mvMatrixID, 1, GL_FALSE, glm::value_ptr(modelViewMatrix));
+//    glm::mat4 modelViewMatrix = getModelViewMatrix();
 
-    m_helper.draw();
+//    glUseProgram(m_programID);
+//    GLuint projMatrixID = glGetUniformLocation(m_programID, "projMatrix");
+//    GLuint mvMatrixID = glGetUniformLocation(m_programID, "mvMatrix");
+//    glUniformMatrix4fv(projMatrixID, 1, GL_FALSE, glm::value_ptr(m_proj));
+//    glUniformMatrix4fv(mvMatrixID, 1, GL_FALSE, glm::value_ptr(modelViewMatrix));
+
+//    m_helper.draw();
+
+    glViewport(0,0,800,800);
 }
 
 void Render::initial()
 {
-    //read file
-    //set m_camera
-    glewExperimental = GL_TRUE;
-    GLenum err = glewInit();
-    std::cout<<"initial........."<<std::endl;
-//    if(err == GLEW_OK)
-//        std::cout<<"....err...GLEW_OK"<<endl;
-    assert(err == GLEW_OK);
 
-    connect(context(),&QOpenGLContext::aboutToBeDestroyed,this,&Render::cleanup);
-    initializeOpenGLFunctions();
-    glClearColor(0,0,0,m_transparent?0:1);
+    std::cout<<"initial"<<std::endl;
+    if(frameBufferId == 0)
+        glGenFramebuffers(1, &frameBufferId);
+    glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId);
+//    glViewport(0,0,800,800);
+    if(depthRenderBuffer == 0)
+        glGenRenderbuffers(1, &depthRenderBuffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, depthRenderBuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 800, 800);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthRenderBuffer);
 
-    m_programID = LoadShaders( "sphereShader.vert", "sphereShader.frag" );
-    GLuint vertexPosition_modelspaceID = glGetAttribLocation(m_programID, "vertexPosition_modelspace");
-    frameBufferId = m_helper.fbo_init(vertexPosition_modelspaceID);
+    if(colorRenderBuffer == 0);
+        glGenRenderbuffers(1, &colorRenderBuffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, colorRenderBuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA, 800,800);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, colorRenderBuffer);
+
+//        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, colorRenderBuffer,0);
+
+    glBindFramebuffer(GL_FRAMEBUFFER,0);
+    qDebug()<<"FramebufferName fbo...init"<<endl;
+
+
 }
 
-bool Render::rendering()
+void Render::resizeGL(int width, int height)
 {
     initial();
+}
+
+QSize Render::sizeHint() const
+{
+    return QSize(800,800);
+}
+
+QSize Render::minimumSizeHint() const
+{
+    return QSize(800,800);
+}
+
+bool Render::rendering(int count)
+{
+    m_programID = LoadShaders("sphereShader.vert","sphereShader.frag");
+    GLuint vertexPosition_modelspaceID = glGetAttribLocation(m_programID,"vertexPosition_modelspace");
+    m_helper.fbo_init(vertexPosition_modelspaceID);
     glBindFramebuffer(GL_FRAMEBUFFER,frameBufferId);
-    glViewport(0,0,800,600);
+    glViewport(0,0,800,800);
     GLenum DrawBuffers[2] = {GL_COLOR_ATTACHMENT0,GL_DEPTH_ATTACHMENT};
     glDrawBuffers(2, DrawBuffers);
 
@@ -192,6 +233,7 @@ bool Render::rendering()
     glUniformMatrix4fv(mvMatrixID, 1, GL_FALSE, glm::value_ptr(modelViewMatrix));
 
     m_helper.draw();
+    qDebug()<<" "<<count<<endl;
     return true;
 }
 
