@@ -1,4 +1,4 @@
-#include "ufface.h"
+﻿#include "ufface.h"
 
 UFface::UFface()
 {
@@ -285,9 +285,9 @@ void UFface::shrinkBySet(std::vector<int> &indices)
         c = tmp & 0x1fffff;
         b = ( tmp >> 21 ) & 0x1fffff;
         a = ( tmp >> 42 ) & 0x1fffff;
-        indices.insert(a);
-        indices.insert(b);
-        indices.insert(c);
+        indices.push_back(a);
+        indices.push_back(b);
+        indices.push_back(c);
     }
 
 }
