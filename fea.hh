@@ -1,4 +1,4 @@
-#ifndef FEA_H
+﻿#ifndef FEA_H
 #define FEA_H
 
 #include <QString>
@@ -10,9 +10,12 @@
 #include "render.hh"
 #include "externalimporter.hh"
 #include <iostream>
+#include "meancurvature.hh"
+#include "gausscurvature.hh"
 
-#define NumHistDepth 15
+#define NumHistDepth 20000
 #define NumHistViewEntropy 15
+#define PI 3.1415926
 
 class Fea
 {
@@ -73,18 +76,18 @@ private:
 
     void setDepthDistribute(GLfloat *zBuffer, int num);
 
-    void setMeanCurvature(MyMesh mesh, std::vector<bool> &isVertexVisible);
+    void setMeanCurvature(MyMesh &mesh, std::vector<bool> &isVertexVisible);
 
     void setMeanCurvature(int t_case, std::vector<bool> &isVertexVisible,
-                          std::vector<MyMesh> &vecMesh,std::vector<std::vector<int>> &indiceArray);
+                          std::vector<MeanCurvature<MyMesh>> &a,std::vector<std::vector<int>> &indiceArray);
 
-    void setGaussianCurvature(MyMesh mesh, std::vector<bool> &isVertexVisible);
+    void setGaussianCurvature(MyMesh &mesh, std::vector<bool> &isVertexVisible);
 
     void setGaussianCurvature(int t_case,std::vector<bool> &isVertexVisible,
-                              std::vector<MyMesh> &vecMesh, std::vector<std::vector<int>> &indiceArray);
+                              std::vector<GaussCurvature<MyMesh>> &b, std::vector<std::vector<int>> &indiceArray);
 
     void setMeshSaliency(int t_case, std::vector<GLfloat> &vertex, std::vector<bool> isVertexVisible,
-                         std::vector<MyMesh> &vecMesh, std::vector<std::vector<int>> &indiceArray);
+                         std::vector<MeanCurvature<MyMesh>> &a, std::vector<std::vector<int>> &indiceArray);
 
     void setMeshSaliency(MyMesh mesh,std::vector<GLfloat> &vertex,std::vector<bool> isVertexVisible);
 

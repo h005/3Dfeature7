@@ -1,6 +1,4 @@
 ﻿#include "fea.hh"
-#include "meancurvature.hh"
-#include "gausscurvature.hh"
 #include <QtDebug>
 
 #define NoProjection
@@ -45,6 +43,7 @@ Fea::Fea(QString modelFile, QString path)
     glm::mat4 tmpPara;
     render = new Render(mesh,tmpPara,tmpPara,tmpPara);
 
+    render->resize(800,800);
     render->show();
 }
 
@@ -52,6 +51,17 @@ void Fea::setFeature()
 {
 
     render->setMeshSaliencyPara(exImporter);
+
+    std::vector<MeanCurvature<MyMesh>> a;
+    std::vector<GaussCurvature<MyMesh>> b;
+    for(int i=0;i<render->p_vecMesh.size();i++)
+    {
+        MeanCurvature<MyMesh> tmpMean(render->p_vecMesh[i]);
+        GaussCurvature<MyMesh> tmpGauss(render->p_vecMesh[i]);
+        a.push_back(tmpMean);
+        b.push_back(tmpGauss);
+    }
+
     for(; t_case < NUM ; t_case++)
     {
         // render
@@ -84,11 +94,11 @@ void Fea::setFeature()
 
             setDepthDistribute(render->p_img,render->p_height*render->p_width);
 
-            setMeanCurvature(t_case,render->p_isVertexVisible,render->p_vecMesh,render->p_indiceArray);
+            setMeanCurvature(t_case,render->p_isVertexVisible,a,render->p_indiceArray);
 
-            setGaussianCurvature(t_case,render->p_isVertexVisible,render->p_vecMesh,render->p_indiceArray);
+            setGaussianCurvature(t_case,render->p_isVertexVisible,b,render->p_indiceArray);
 
-            setMeshSaliency(t_case,render->p_vertices,render->p_isVertexVisible,render->p_vecMesh,render->p_indiceArray);
+            setMeshSaliency(t_case,render->p_vertices,render->p_isVertexVisible,a,render->p_indiceArray);
 
             setAbovePreference(output,render->p_model);
         }
@@ -201,65 +211,21 @@ void Fea::setVisSurfaceArea(std::vector<GLfloat> &vertex,
 
 void Fea::setViewpointEntropy(std::vector<GLfloat> &vertex, std::vector<GLuint> &face)
 {
-//    double hist[15];
-    double *hist = new double[NumHistViewEntropy];
-//    还有此处，写成 double hist[15]; memest(hist,0,sizeof(hist));也会出错！
-    memset(hist,0,sizeof(double)*NumHistViewEntropy);
-    double *area = new double[face.size()/3];
-    double min = 1e10;
-    double max = -1.0;
     feaArray[2] = 0.0;
-//    setArea
-//    qDebug()<<"face size"<<face.size()<<endl;
-    if(face.size())
+    double area = 0.0;
+    double totalArea = image.cols*image.rows;
+    for(int i=0;i<face.size();i++)
     {
-        for(int i=0;i<face.size();i+=3)
-        {
-            CvPoint2D64f a = cvPoint2D64f(vertex[face[i]*3],vertex[face[i]*3+1]);
-            CvPoint2D64f b = cvPoint2D64f(vertex[face[i+1]*3],vertex[face[i+1]*3+1]);
-            CvPoint2D64f c = cvPoint2D64f(vertex[face[i+2]*3],vertex[face[i+2]*3+1]);
-    //        double bc = getDis2D(&b,&c);
-    //        double ac = getDis2D(&a,&c);
-    //        double cosACB = cosVal2D(&a,&b,&c);
-    //        double sinACB = sqrt(1.0 - cosACB*cosACB);
-    //        area[i/3] = bc*ac*sinACB/2.0;
-            area[i/3] = getArea2D(&a,&b,&c);
-//            qDebug()<< "area... "<<i<<" "<<area[i/3]<<endl;
-            min = min > area[i/3] ? area[i/3] : min;
-            max = max > area[i/3] ? max : area[i/3];
-        }
-    //    setHist
-        double step = (max-min)/(double)(NumHistViewEntropy);
-        for(int i=0;i<face.size()/3;i++)
-        {
-    //        qDebug()<<(int)((area[i] - min)/step)<<endl;
-            if(area[i] == max)
-                hist[NumHistViewEntropy - 1]++;
-            else
-                hist[(int)((area[i] - min)/step)] ++;
-        }
-        normalizeHist(hist,step,NumHistViewEntropy);
+        CvPoint2D64f a = cvPoint2D64f(vertex[face[i]*3],vertex[face[i]*3+1]);
+        CvPoint2D64f b = cvPoint2D64f(vertex[face[i+1]*3],vertex[face[i+1]*3+1]);
+        CvPoint2D64f c = cvPoint2D64f(vertex[face[i+2]*3],vertex[face[i+2]*3+1]);
+        area = getArea2D(&a,&b,&c);
+        feaArray[2] += area/totalArea * log2(area/totalArea);
     }
+    // background
+    feaArray[2] += (totalArea - feaArray[0])/totalArea * log2((totalArea - feaArray[0])/totalArea);
 
-
-//    setEntropy
-    for(int i=0;i<NumHistViewEntropy;i++)
-        if(hist[i])
-            feaArray[2] += hist[i]*log2(hist[i]);
-//    NND绝对的未解之谜！加了下面一句话会报错！
-    delete []hist;
     feaArray[2] = - feaArray[2];
-
-    std::cout<<"fea viewpointEntropy "<<feaArray[2]<<std::endl;
-//    delete []hist;
-    delete []area;
-/*
-    freopen("e:/matlab/vpe.txt","w",stdout);
-    for(int i=0;i<vertex.size();i+=3)
-        printf("%f %f %f\n",vertex[i],vertex[i+1],vertex[i+2]);
-    fclose(stdout);
-*/
-
 }
 
 void Fea::setSilhouetteLength()
@@ -314,6 +280,7 @@ void Fea::setSilhouetteCE()
     feaArray[4] = 0.0;
     feaArray[5] = 0.0;
     double curva = 0;
+    double dis = 0;
 //    example
 //    ghabcdefghabcde
 //     ^  ->  ^
@@ -333,8 +300,9 @@ void Fea::setSilhouetteCE()
         if(getCurvature(&a,&b,&c,curva))
         {
 //            std::cout << curva << std::endl;
-            feaArray[4] += abs(curva);
-            feaArray[5] += curva*curva;
+            dis = getDis2D(&a,&b) + getDis2D(&b,&c);
+            feaArray[4] += abs(curva) * dis;
+            feaArray[5] += curva*curva * dis;
         }
     }
 
@@ -354,9 +322,10 @@ void Fea::setSilhouetteCE()
 
 void Fea::setMaxDepth(float *array,int len)
 {
-    feaArray[6] = 10.0;
+    feaArray[6] = -10.0;
     for(int i=0;i<len;i++)
-        feaArray[6] = feaArray[6] < array[i] ? feaArray[6] : array[i];
+        if(array[i] < 1.0)
+            feaArray[6] = feaArray[6] < array[i] ? feaArray[6] : array[i];
     std::cout<<"fea maxDepth "<<feaArray[6]<<std::endl;
 }
 
@@ -407,24 +376,25 @@ void Fea::setDepthDistribute(GLfloat *zBuffer, int num)
 */
 }
 
-void Fea::setMeanCurvature(MyMesh mesh, std::vector<bool> &isVertexVisible)
+void Fea::setMeanCurvature(MyMesh &mesh, std::vector<bool> &isVertexVisible)
 {
     feaArray[8] = 0.0;
     MeanCurvature<MyMesh> a(mesh);
     feaArray[8] = a.getMeanCurvature(isVertexVisible);
-    feaArray[8] /= feaArray[0];
+    if(feaArray[0])
+        feaArray[8] /= feaArray[0];
     std::cout<<"fea meanCurvature "<<feaArray[8]<<std::endl;
 }
 
 void Fea::setMeanCurvature(int t_case,
                            std::vector<bool> &isVertexVisible,
-                           std::vector<MyMesh> &vecMesh,
+                           std::vector<MeanCurvature<MyMesh>> &a,
                            std::vector<std::vector<int>> &indiceArray)
 {
-    printf("vecMesh....%d\n",vecMesh.size());
+    printf("vecMesh....%d\n",a.size());
     printf("indiceArray....%d\n",indiceArray.size());
     feaArray[8] = 0.0;
-    for(int i=0;i<vecMesh.size();i++)
+    for(int i=0;i<a.size();i++)
     {
         // 查看在哪个mesh上面crash掉了
 //        std::cout<<"setMeahCurvature.... "<<i<<std::endl;
@@ -453,8 +423,8 @@ void Fea::setMeanCurvature(int t_case,
         std::set<int>::iterator it = verIndice.begin();
         for(;it!=verIndice.end();it++)
             isVerVis.push_back(isVertexVisible[*it]);
-        MeanCurvature<MyMesh> a(vecMesh[i]);
-        feaArray[8] += a.getMeanCurvature(isVerVis);
+//        MeanCurvature<MyMesh> a(vecMesh[i]);
+        feaArray[8] += a[i].getMeanCurvature(isVerVis);
     }
 
     if(feaArray[0])
@@ -462,7 +432,7 @@ void Fea::setMeanCurvature(int t_case,
     std::cout<<"fea meanCurvature "<<feaArray[8]<<std::endl;
 }
 
-void Fea::setGaussianCurvature(MyMesh mesh, std::vector<bool> &isVertexVisible)
+void Fea::setGaussianCurvature(MyMesh &mesh, std::vector<bool> &isVertexVisible)
 {
     feaArray[9] = 0.0;
     GaussCurvature<MyMesh> a(mesh);
@@ -474,13 +444,13 @@ void Fea::setGaussianCurvature(MyMesh mesh, std::vector<bool> &isVertexVisible)
 
 void Fea::setGaussianCurvature(int t_case, // for debug, used for output the mesh
                                std::vector<bool> &isVertexVisible,
-                               std::vector<MyMesh> &vecMesh,
+                               std::vector<GaussCurvature<MyMesh>> &a,
                                std::vector<std::vector<int>> &indiceArray)
 {
-    printf("gaussian vecMesh....%d\n",vecMesh.size());
+    printf("gaussian vecMesh....%d\n",a.size());
     printf("gaussina indiceArray....%d\n",indiceArray.size());
     feaArray[9] = 0.0;
-    for(int i=0;i<vecMesh.size();i++)
+    for(int i=0;i<a.size();i++)
     {
         std::vector<bool> isVerVis;
 
@@ -491,8 +461,8 @@ void Fea::setGaussianCurvature(int t_case, // for debug, used for output the mes
         for(;it!=verIndice.end();it++)
             isVerVis.push_back(isVertexVisible[*it]);
 
-        GaussCurvature<MyMesh> a(vecMesh[i]);
-        feaArray[9] += a.getGaussianCurvature(isVerVis);
+//        GaussCurvature<MyMesh> a(vecMesh[i]);
+        feaArray[9] += a[i].getGaussianCurvature(isVerVis);
     }
     if(feaArray[0])
     feaArray[9] /= feaArray[0];
@@ -554,7 +524,7 @@ void Fea::setMeshSaliency(MyMesh mesh, std::vector<GLfloat> &vertex, std::vector
 void Fea::setMeshSaliency(int t_case,// for debug can be used to output the mesh
                           std::vector<GLfloat> &vertex,
                           std::vector<bool> isVertexVisible,
-                          std::vector<MyMesh> &vecMesh,
+                          std::vector<MeanCurvature<MyMesh>> &a,
                           std::vector<std::vector<int>> &indiceArray)
 {
 
@@ -571,7 +541,7 @@ void Fea::setMeshSaliency(int t_case,// for debug can be used to output the mesh
     double localMax[5];
     double gaussWeightedVal1,gaussWeightedVal2;
 
-    for(int i=0;i<vecMesh.size();i++)
+    for(int i=0;i<a.size();i++)
     {
         std::set<int> verIndice;
         std::vector<int> verVec;
@@ -581,8 +551,8 @@ void Fea::setMeshSaliency(int t_case,// for debug can be used to output the mesh
         for(;it!=verIndice.end();it++)
             verVec.push_back(*it);
 
-        MeanCurvature<MyMesh> a(vecMesh[i]);
-        a.setMeanCurvature(meanCurvature,verVec);
+//        MeanCurvature<MyMesh> a(vecMesh[i]);
+        a[i].setMeanCurvature(meanCurvature,verVec);
 
     }
 
@@ -1066,8 +1036,8 @@ void Fea::printOut()
     printf("%s\n",fileName.at(t_case).toStdString().c_str());
     for(int i=0;i<12;i++)
     {
-        if(i==10)
-            printf("%e ",feaArray[i]);
+        if(i==10 || i == 8 || i == 9)
+            printf("%lf ",log2(feaArray[i]));
         else
             printf("%lf ",feaArray[i]);
     }

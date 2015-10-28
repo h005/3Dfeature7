@@ -8,7 +8,7 @@ UFface::UFface()
 UFface::UFface(std::vector<int> &indices)
 {
 
-    shrink(indices);
+    shrinkBySet(indices);
     std::cout<<"shrink done..."<<std::endl;
     NUM_FACE = indices.size()/3;
     arrayFace = new int*[NUM_FACE];
@@ -379,12 +379,12 @@ void UFface::checkIn(int i, int j)
         }
 }
 
-long long UFface::min(a, b)
+long long UFface::min(int a, int b)
 {
     return (long long)(a < b ? a : b);
 }
 
-long long UFface::max(a, b)
+long long UFface::max(int a, int b)
 {
     return (long long)(a < b ? b : a);
 }
