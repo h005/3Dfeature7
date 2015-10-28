@@ -19,6 +19,7 @@ public:
 private:
 
     void shrink(std::vector<int> &indices);
+    void shrinkBySet(std::vector<int> &indices);
     bool isSameFace(std::vector<int> &indices,int i1,int i2);
 
     int find(int p);
@@ -37,6 +38,9 @@ private:
 
     void setRelation();
     void checkIn(int i,int j);
+
+    long long min(int a,int b);
+    long long max(int a,int b);
 
 private:
     std::set<int> cateSet;
